@@ -44,7 +44,29 @@ func (cfg *apiConfig) createFeedHandle(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, newFeed)
+	feedFollowId := uuid.New()
+	newFollowParams := database.CreateFeedFollowParams {
+		ID: feedFollowId,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+		FeedID: feedId,
+		UserID: user.ID,
+	}
+	newFeedFollow, err := cfg.DB.CreateFeedFollow(r.Context(), newFollowParams)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Bad Request: %v", err))
+		return
+	}
+	type responseJson struct {
+		Feed database.Feed `json:"feed"`
+		FeedFollow database.Follow `json:"feed_follow"`
+	}
+
+	newFeedResponse := responseJson {
+		Feed: newFeed,
+		FeedFollow: newFeedFollow,
+	}
+	respondWithJSON(w, http.StatusCreated, newFeedResponse)
 }
 
 func (cfg *apiConfig) getAllFieldsHandle(w http.ResponseWriter, r *http.Request, ) {

@@ -42,6 +42,9 @@ func main() {
 	httpMux.HandleFunc("GET /v1/users", cfg.middlewareAuth(cfg.validateApiKeyHandle))
 	httpMux.HandleFunc("POST /v1/feeds", cfg.middlewareAuth(cfg.createFeedHandle))
 	httpMux.HandleFunc("GET /v1/feeds", cfg.getAllFieldsHandle)
+	httpMux.HandleFunc("POST /v1/feed_follows", cfg.middlewareAuth(cfg.createFeedFollowHandle))
+	httpMux.HandleFunc("GET /v1/feed_follows", cfg.middlewareAuth(cfg.getFeedFollows))
+	httpMux.HandleFunc("DELETE /v1/feed_follows/{feedFollowId}", cfg.middlewareAuth(cfg.delFeedFollow))
 	
 	httpServer := &http.Server{
 		Addr: fmt.Sprintf(":%v", os.Getenv("PORT")),

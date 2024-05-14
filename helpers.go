@@ -7,10 +7,6 @@ import (
 	"regexp"
 )
 
-func getBadWords() []string {
-	return []string{"kerfuffle", "sharbert", "fornax"}
-}
-
 func respondWithError(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "applicatoin/json")
 	w.WriteHeader(code)
