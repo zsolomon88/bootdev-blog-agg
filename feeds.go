@@ -1,9 +1,11 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -77,4 +79,73 @@ func (cfg *apiConfig) getAllFieldsHandle(w http.ResponseWriter, r *http.Request,
 	}
 
 	respondWithJSON(w, http.StatusOK, feeds)
+}
+
+func (cfg *apiConfig) getSingleFeed(w http.ResponseWriter, r *http.Request, ) {
+	feedId, err := uuid.Parse(strings.TrimSpace(r.PathValue("feedId")))
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Internal Server Error: %v", err))
+		return
+	}
+
+	getParams := database.UpdateFetchTimeParams{
+		ID: feedId,
+		FetchedAt: sql.NullTime{
+			Time: time.Now().UTC(),
+			Valid: true,
+		},
+	}
+	feed, err := cfg.DB.UpdateFetchTime(r.Context(), getParams)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Internal Server Error: %v", err))
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, feed)
+}
+
+
+func (cfg *apiConfig) getNextFeeds(w http.ResponseWriter, r *http.Request, ) {
+	numberOfFeeds := r.URL.Query().Get("limit")
+	feedLimit := 10
+	if numberOfFeeds != "" {
+		feedLimit, _ = strconv.Atoi(numberOfFeeds)
+	}
+
+	feeds, err := cfg.DB.FetchNextFeeds(r.Context(), int32(feedLimit))
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Internal Server Error: %v", err))
+		return
+	}
+
+	rssData := make([]Rss, feedLimit)
+	type responseData struct {
+		Titles []string `json:"titles"`
+	}
+
+	titleList := responseData{}
+	for i, feed := range feeds {
+		timeParam := database.UpdateFetchTimeParams{
+			ID: feed.ID,
+			FetchedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		}
+		_, err := cfg.DB.UpdateFetchTime(r.Context(), timeParam)
+
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Internal Server Error: %v", err))
+			return
+		}
+
+		feeds[i].FetchedAt = timeParam.FetchedAt
+		var feedData *Rss = &Rss{}
+		err = fetchRssFeed(feed.Url, feedData)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Internal Server Error: %v", err))
+			return
+		}
+		rssData = append(rssData, *feedData)
+		titleList.Titles = append(titleList.Titles, feedData.Channel.Title)
+	}
+
+	respondWithJSON(w, http.StatusOK, titleList)
 }

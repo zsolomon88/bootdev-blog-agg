@@ -5,3 +5,14 @@ RETURNING *;
 
 -- name: GetAllFeeds :many
 SELECT * FROM feeds;
+
+-- name: UpdateFetchTime :one
+UPDATE feeds
+SET fetched_at = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: FetchNextFeeds :many
+SELECT * FROM feeds
+ORDER BY fetched_at NULLS FIRST
+LIMIT $1;
